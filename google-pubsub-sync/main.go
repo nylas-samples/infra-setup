@@ -1,25 +1,26 @@
 package main
 
 import (
-	pubsub "cloud.google.com/go/pubsub"
 	"context"
 	"errors"
 	"fmt"
-	"google.golang.org/api/googleapi"
-	iam "google.golang.org/api/iam/v1"
 	"os"
 	"strings"
+	"time"
+
+	pubsub "cloud.google.com/go/pubsub"
+	"google.golang.org/api/googleapi"
+	iam "google.golang.org/api/iam/v1"
 )
 
 // ENV
-//valid values for ENV are
+// valid values for ENV are
 // * "STAGING"
 // * "US"
 // * "EU"
-//
 var ENV = "US"
 
-// GCP Project ID 
+// GCP Project ID
 const ProjectId = "YOUR_GCP_PROJECT_ID_HERE"
 
 func fetchOrCreateServiceAccount(ctx *context.Context, name string) (*iam.ServiceAccount, error) {
@@ -131,6 +132,12 @@ func validateSubscriptionConfig(subscriptionConfig *pubsub.SubscriptionConfig, t
 		return false
 	}
 
+	expirationDuration := subscriptionConfig.ExpirationPolicy
+
+	if expirationDuration == nil || expirationDuration != time.Duration(0) {
+		return false
+	}
+
 	return existingTopic.ID() == topic.ID() && existingPushConfig.Endpoint == config.Endpoint && existingAuth.ServiceAccountEmail == correctAuth.ServiceAccountEmail
 }
 
@@ -187,7 +194,10 @@ func fetchOrCreateSubscription(ctx *context.Context, subID string, topic *pubsub
 			fmt.Printf("Subscription is valid\n")
 			return sub, nil
 		} else {
-			_, err = sub.Update(*ctx, pubsub.SubscriptionConfigToUpdate{PushConfig: &pushConfig})
+			_, err = sub.Update(*ctx, pubsub.SubscriptionConfigToUpdate{
+				PushConfig:       &pushConfig,
+				ExpirationPolicy: time.Duration(0), // never expire
+			})
 			if err != nil {
 				fmt.Printf("Failed to update existing subscription config with error %v\n", err)
 				return nil, err
@@ -198,8 +208,9 @@ func fetchOrCreateSubscription(ctx *context.Context, subID string, topic *pubsub
 	}
 
 	sub, err = client.CreateSubscription(*ctx, subID, pubsub.SubscriptionConfig{
-		Topic:      topic,
-		PushConfig: pushConfig,
+		Topic:            topic,
+		PushConfig:       pushConfig,
+		ExpirationPolicy: time.Duration(0), //never expire
 	})
 	if err != nil {
 		return nil, fmt.Errorf("CreateSubscription: %v\n", err)
