@@ -3,33 +3,25 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
 
-	pubsub "cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub"
 	"google.golang.org/api/googleapi"
-	iam "google.golang.org/api/iam/v1"
+	"google.golang.org/api/iam/v1"
 )
 
-// ENV
-// valid values for ENV are
-// * "STAGING"
-// * "US"
-// * "EU"
-var ENV = "US"
-
-// GCP Project ID
-const ProjectId = "YOUR_GCP_PROJECT_ID_HERE"
-
-func fetchOrCreateServiceAccount(ctx *context.Context, name string) (*iam.ServiceAccount, error) {
+func fetchOrCreateServiceAccount(ctx *context.Context, name, projectID string) (*iam.ServiceAccount, error) {
 	service, err := iam.NewService(*ctx)
 
 	if err != nil {
 		return nil, fmt.Errorf("iam.NewService: %v", err)
 	}
-	serviceAccountUrl := fmt.Sprintf("projects/%s/serviceAccounts/%s@%s.iam.gserviceaccount.com", ProjectId, name, ProjectId)
+	serviceAccountUrl := fmt.Sprintf("projects/%s/serviceAccounts/%s@%s.iam.gserviceaccount.com", projectID, name, projectID)
 	account, err := service.Projects.ServiceAccounts.Get(serviceAccountUrl).Context(*ctx).Do()
 	if err != nil {
 		googleErr, ok := err.(*googleapi.Error)
@@ -50,7 +42,7 @@ func fetchOrCreateServiceAccount(ctx *context.Context, name string) (*iam.Servic
 			},
 		}
 
-		projectUrl := fmt.Sprintf("projects/%s", ProjectId)
+		projectUrl := fmt.Sprintf("projects/%s", projectID)
 
 		account, err = service.Projects.ServiceAccounts.Create(projectUrl, request).Context(*ctx).Do()
 		if err != nil {
@@ -90,9 +82,8 @@ func fetchOrCreateServiceAccount(ctx *context.Context, name string) (*iam.Servic
 	return account, nil
 }
 
-func fetchOrCreateTopic(ctx *context.Context, topicID string) (*pubsub.Topic, error) {
-
-	client, err := pubsub.NewClient(*ctx, ProjectId)
+func fetchOrCreateTopic(ctx *context.Context, topicID, projectID string) (*pubsub.Topic, error) {
+	client, err := pubsub.NewClient(*ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("pubsub.NewClient: %v", err)
 	}
@@ -141,25 +132,26 @@ func validateSubscriptionConfig(subscriptionConfig *pubsub.SubscriptionConfig, t
 	return existingTopic.ID() == topic.ID() && existingPushConfig.Endpoint == config.Endpoint && existingAuth.ServiceAccountEmail == correctAuth.ServiceAccountEmail
 }
 
-func getEndpoint() (string, error) {
-	if ENV == "US" {
+func getEndpoint(env string) (string, error) {
+	switch env {
+	case "US":
 		return "https://gmailrealtime.us.nylas.com", nil
-	} else if ENV == "EU" {
+	case "EU":
 		return "https://gmailrealtime.eu.nylas.com", nil
-	} else if ENV == "STAGING" {
+	case "STAGING":
 		return "https://gmailrealtime-stg.us.nylas.com", nil
+	default:
+		return "", errors.New("supplied environment that Nylas does not support")
 	}
-
-	return "", errors.New("supplied environment that Nylas does not support")
 }
 
-func fetchOrCreateSubscription(ctx *context.Context, subID string, topic *pubsub.Topic, serviceAccount *iam.ServiceAccount) (*pubsub.Subscription, error) {
-	endpoint, err := getEndpoint()
+func fetchOrCreateSubscription(ctx *context.Context, subID, projectID, env string, topic *pubsub.Topic, serviceAccount *iam.ServiceAccount) (*pubsub.Subscription, error) {
+	endpoint, err := getEndpoint(env)
 	if err != nil {
 		return nil, fmt.Errorf("did not create a subscription since %s", err.Error())
 	}
 
-	client, err := pubsub.NewClient(*ctx, ProjectId)
+	client, err := pubsub.NewClient(*ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("pubsub.NewClient: %v", err)
 	}
@@ -222,14 +214,23 @@ func fetchOrCreateSubscription(ctx *context.Context, subID string, topic *pubsub
 }
 
 func main() {
+	env := flag.String("env", "US", "What env the push subscription will publish to. Valid values are US, EU, STAGING. Defaults to US")
+	projectID := flag.String("projectId", "", "The GCP projectID that this script will run in")
+
+	flag.Parse()
+
+	if *projectID == "" {
+		log.Fatalln("projectId flag must be set")
+	}
+
 	ctx := context.Background()
-	serviceAccount, err := fetchOrCreateServiceAccount(&ctx, "nylas-gmail-realtime")
+	serviceAccount, err := fetchOrCreateServiceAccount(&ctx, "nylas-gmail-realtime", *projectID)
 	if err != nil {
 		fmt.Printf("Failed to create service account with error %v, exiting\n", err)
 		os.Exit(1)
 	}
 
-	topic, err := fetchOrCreateTopic(&ctx, "nylas-gmail-realtime")
+	topic, err := fetchOrCreateTopic(&ctx, "nylas-gmail-realtime", *projectID)
 
 	if err != nil {
 		fmt.Printf("Failed to create topic with error %v, exiting\n", err)
@@ -252,12 +253,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = fetchOrCreateSubscription(&ctx, "push-nylas-gmail-realtime-sub", topic, serviceAccount)
+	_, err = fetchOrCreateSubscription(&ctx, "push-nylas-gmail-realtime-sub", *projectID, *env, topic, serviceAccount)
 
 	if err != nil {
 		fmt.Printf("Failed to create subscription with error %v, exiting\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Successfully setup GCP project %s for realtime google email sync", ProjectId)
+	fmt.Printf("Successfully setup GCP project %s for realtime google email sync", *projectID)
 }

@@ -15,16 +15,19 @@ gcloud config set project $YOUR_PROJECT_NAME_HERE
 gcloud auth application-default login
 ```
 
-3. Edit the `main.go` file in this directory. Set the `ENV` variable to the correct region, and the `ProjectId` constant to your GCP project name
-
-4. Fetch the dependencies.
+3. Fetch the dependencies.
 
 ```bash
 go get .
 ```
 
-5. Run the program.
+4. Run the program.
 
 ```bash
-go run main.go
+go run main.go --projectId $YOUR_PROJECT_NAME_HERE
 ```
+## Flags
+| Flag name  | Description                                                             | Example         |
+|------------|-------------------------------------------------------------------------|-----------------| 
+| `projectId` | The GCP Project to run this script against                              | test-project-id |
+| `env`       | The Nylas environment to run against. Valid values are: US, EU, STAGING | US              |
