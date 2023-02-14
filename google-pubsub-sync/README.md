@@ -30,4 +30,4 @@ go run main.go --projectId $YOUR_PROJECT_NAME_HERE
 | Flag name  | Description                                                             | Example         |
 |------------|-------------------------------------------------------------------------|-----------------| 
 | `projectId` | The GCP Project to run this script against                              | test-project-id |
-| `env`       | The Nylas environment to run against. Valid values are: US, EU, STAGING | US              |
+| `env`       | The Nylas environment to run against. Valid values are: us, eu, staging | us               |

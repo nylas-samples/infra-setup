@@ -134,11 +134,11 @@ func validateSubscriptionConfig(subscriptionConfig *pubsub.SubscriptionConfig, t
 
 func getEndpoint(env string) (string, error) {
 	switch env {
-	case "US":
+	case "us":
 		return "https://gmailrealtime.us.nylas.com", nil
-	case "EU":
+	case "eu":
 		return "https://gmailrealtime.eu.nylas.com", nil
-	case "STAGING":
+	case "staging":
 		return "https://gmailrealtime-stg.us.nylas.com", nil
 	default:
 		return "", errors.New("supplied environment that Nylas does not support")
@@ -214,7 +214,7 @@ func fetchOrCreateSubscription(ctx *context.Context, subID, projectID, env strin
 }
 
 func main() {
-	env := flag.String("env", "US", "What env the push subscription will publish to. Valid values are US, EU, STAGING. Defaults to US")
+	env := flag.String("env", "us", "What env the push subscription will publish to. Valid values are us, eu, staging. Defaults to US")
 	projectID := flag.String("projectId", "", "The GCP projectID that this script will run in")
 
 	flag.Parse()
