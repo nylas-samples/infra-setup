@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -22,7 +23,7 @@ func fetchOrCreateServiceAccount(ctx *context.Context, name, projectID string) (
 		return nil, fmt.Errorf("iam.NewService: %v", err)
 	}
 	serviceAccountUrl := fmt.Sprintf("projects/%s/serviceAccounts/%s@%s.iam.gserviceaccount.com", projectID, name, projectID)
-	account, err := service.Projects.ServiceAccounts.Get(serviceAccountUrl).Context(*ctx).Do()
+	account, err := service.Projects.ServiceAccounts.Get(url.QueryEscape(serviceAccountUrl)).Context(*ctx).Do()
 	if err != nil {
 		googleErr, ok := err.(*googleapi.Error)
 		if ok && googleErr.Code == 404 {
