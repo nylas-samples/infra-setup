@@ -49,7 +49,14 @@ func fetchOrCreateServiceAccount(ctx *context.Context, name, projectID string) (
 			googleErr, ok := err.(*googleapi.Error)
 			if ok && googleErr.Code == 409 && strings.Contains(googleErr.Message, "already exists") {
 				fmt.Printf("Service account already exists, skipping create\n")
+				account, err = service.Projects.ServiceAccounts.Get(serviceAccountUrl).Context(*ctx).Do()
+				if err != nil {
+					return nil, fmt.Errorf("failed to fetch service account: %v", err)
+				}
+				return account, nil
+
 			}
+			return nil, fmt.Errorf("Projects.ServiceAccounts.Create: %v", err)
 		}
 
 		if account == nil && account.Name != "" {
