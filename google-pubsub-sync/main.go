@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -23,7 +22,7 @@ func fetchOrCreateServiceAccount(ctx *context.Context, name, projectID string) (
 		return nil, fmt.Errorf("iam.NewService: %v", err)
 	}
 	serviceAccountUrl := fmt.Sprintf("projects/%s/serviceAccounts/%s@%s.iam.gserviceaccount.com", projectID, name, projectID)
-	account, err := service.Projects.ServiceAccounts.Get(url.QueryEscape(serviceAccountUrl)).Context(*ctx).Do()
+	account, err := service.Projects.ServiceAccounts.Get(serviceAccountUrl).Context(*ctx).Do()
 	if err != nil {
 		googleErr, ok := err.(*googleapi.Error)
 		if ok && googleErr.Code == 404 {
@@ -51,8 +50,6 @@ func fetchOrCreateServiceAccount(ctx *context.Context, name, projectID string) (
 			if ok && googleErr.Code == 409 && strings.Contains(googleErr.Message, "already exists") {
 				fmt.Printf("Service account already exists, skipping create\n")
 			}
-
-			return nil, fmt.Errorf("Projects.ServiceAccounts.Create: %v", err)
 		}
 
 		if account == nil && account.Name != "" {
@@ -142,7 +139,7 @@ func getEndpoint(env string) (string, error) {
 	case "staging":
 		return "https://gmailrealtime-stg.us.nylas.com", nil
 	default:
-		return "", errors.New("supplied environment that Nylas does not support")
+		return "", errors.New("supplied environment is not supported by Nylas")
 	}
 }
 
@@ -215,7 +212,7 @@ func fetchOrCreateSubscription(ctx *context.Context, subID, projectID, env strin
 }
 
 func main() {
-	env := flag.String("env", "us", "What env the push subscription will publish to. Valid values are us, eu, staging. Defaults to US")
+	env := flag.String("env", "us", "What env the push subscription will publish to. Valid values are us, eu, staging. Defaults to us")
 	projectID := flag.String("projectId", "", "The GCP projectID that this script will run in")
 
 	flag.Parse()
@@ -261,5 +258,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Successfully setup GCP project %s for realtime google email sync", *projectID)
+	fmt.Printf("Successfully setup GCP project %s for realtime google email sync\n", *projectID)
 }
