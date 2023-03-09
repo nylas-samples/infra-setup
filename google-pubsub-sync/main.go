@@ -114,7 +114,7 @@ func fetchOrCreateTopic(ctx *context.Context, topicID, projectID string) (*pubsu
 	return topic, nil
 }
 
-func validateSubscriptionConfig(subscriptionConfig *pubsub.SubscriptionConfig, topic *pubsub.Topic, config *pubsub.PushConfig) bool {
+func validateSubscriptionConfig(subscriptionConfig *pubsub.SubscriptionConfig, topic *pubsub.Topic, expectedConfig *pubsub.PushConfig) bool {
 	existingTopic := subscriptionConfig.Topic
 	existingPushConfig := subscriptionConfig.PushConfig
 
@@ -123,7 +123,7 @@ func validateSubscriptionConfig(subscriptionConfig *pubsub.SubscriptionConfig, t
 		return false
 	}
 
-	correctAuth, ok := pubsub.PushConfig{}.AuthenticationMethod.(*pubsub.OIDCToken)
+	correctAuth, ok := expectedConfig.AuthenticationMethod.(*pubsub.OIDCToken)
 	if !ok {
 		return false
 	}
@@ -134,7 +134,7 @@ func validateSubscriptionConfig(subscriptionConfig *pubsub.SubscriptionConfig, t
 		return false
 	}
 
-	return existingTopic.ID() == topic.ID() && existingPushConfig.Endpoint == config.Endpoint && existingAuth.ServiceAccountEmail == correctAuth.ServiceAccountEmail
+	return existingTopic.ID() == topic.ID() && existingPushConfig.Endpoint == expectedConfig.Endpoint && existingAuth.ServiceAccountEmail == correctAuth.ServiceAccountEmail
 }
 
 func getEndpoint(env string) (string, error) {
