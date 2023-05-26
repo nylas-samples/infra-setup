@@ -258,7 +258,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = fetchOrCreateSubscription(&ctx, "push-nylas-gmail-realtime-sub", *projectID, *env, topic, serviceAccount)
+	_, err = fetchOrCreateSubscription(&ctx, "push-nylas-gmail-realtime-sub-"+*env, *projectID, *env, topic, serviceAccount)
 
 	if err != nil {
 		fmt.Printf("Failed to create subscription with error %v, exiting\n", err)
